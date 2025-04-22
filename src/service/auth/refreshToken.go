@@ -19,7 +19,7 @@ type RefreshTokenPayload struct {
 	Token          string `json:"token"`
 }
 
-func (s *Service) GenerateRefreshToken(GUID, ip string, ctx context.Context) (string, int, error) {
+func (s *Service) GenerateRefreshToken(GUID, ip string, ctx context.Context) (string, int, *errHandler.CustomError) {
 	tokenBytes := make([]byte, 32)
 	_, _ = rand.Read(tokenBytes)
 
