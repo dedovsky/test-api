@@ -11,9 +11,9 @@ func (s *Service) GenerateToken(GUID, ip string, ctx context.Context) (string, s
 	expiresAt := jwt.NewNumericDate(time.Now().Add(24 * time.Hour))
 
 	var rTokenID int
-	refreshToken, rTokenID, err := s.GenerateRefreshToken(GUID, ip, ctx)
-	if err != nil {
-		return "", "", errHandler.New(errHandler.ErrInternal, err)
+	refreshToken, rTokenID, customErr := s.GenerateRefreshToken(GUID, ip, ctx)
+	if customErr != nil {
+		return "", "", customErr
 	}
 
 	claims := &Claims{
