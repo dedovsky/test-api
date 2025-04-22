@@ -1,14 +1,14 @@
 package auth
 
 import (
-	"awesomeProject1/internal/repository/postgres"
+	"awesomeProject1/repository/postgres"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type Service struct {
 	tokenKey   string
 	refreshKey string
-	db         *postgres.Postgres
+	db         *postgres.Repository
 }
 
 type Claims struct {
@@ -19,7 +19,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func NewService(tokenKey, rTokenKey string, db *postgres.Postgres) *Service {
+func NewService(tokenKey, rTokenKey string, db *postgres.Repository) *Service {
 	return &Service{
 		tokenKey:   tokenKey,
 		refreshKey: rTokenKey,

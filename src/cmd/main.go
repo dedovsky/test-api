@@ -1,9 +1,10 @@
 package main
 
 import (
-	"awesomeProject1/internal/handler"
-	"awesomeProject1/internal/repository/postgres"
-	"awesomeProject1/internal/service/auth"
+	"awesomeProject1/handler"
+	"awesomeProject1/infrastructure"
+	"awesomeProject1/repository/postgres"
+	"awesomeProject1/service/auth"
 	"log"
 	"os"
 )
@@ -22,7 +23,10 @@ func main() {
 		log.Fatal("POSTGRES_URL is not set")
 	}
 
-	db, err := postgres.New(postgresURL)
+	pgx, err := infrastructure.NewPostgres(postgresURL)
+
+	db := &postgres.Repository{Postgres: pgx}
+
 	if err != nil {
 		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
 	}

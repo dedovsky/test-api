@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"awesomeProject1/internal/service/auth"
+	"awesomeProject1/service/auth"
 	"github.com/gin-gonic/gin"
 	"log"
 )
@@ -34,7 +34,7 @@ func (auth *AuthHandler) getToken(c *gin.Context) {
 		return
 	}
 
-	token, refreshToken, err := auth.GenerateToken(GUID, c.ClientIP())
+	token, refreshToken, err := auth.GenerateToken(GUID, c.ClientIP(), c)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -53,7 +53,7 @@ func (auth *AuthHandler) validateToken(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "токен не может быть пустым"})
 	}
 
-	_, err := auth.ValidateToken(token)
+	_, err := auth.ValidateToken(token, c)
 	if err != nil {
 		c.JSON(401, gin.H{"error": err.Error()})
 		return
@@ -79,9 +79,9 @@ func (auth *AuthHandler) refreshToken(c *gin.Context) {
 		return
 	}
 
-	token, refreshToken, err := auth.RenewTokens(rToken.RefreshToken, c.ClientIP())
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+	token, refreshToken, customErr := auth.RenewTokens(rToken.RefreshToken, c.ClientIP(), c)
+	if customErr != nil {
+		c.JSON(customErr.Code, gin.H{"error": customErr.Message})
 		return
 	}
 

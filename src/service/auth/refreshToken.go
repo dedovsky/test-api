@@ -1,13 +1,14 @@
 package auth
 
 import (
-	"awesomeProject1/internal/service"
+	"awesomeProject1/errHandler"
+	"awesomeProject1/service"
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,7 +19,7 @@ type RefreshTokenPayload struct {
 	Token          string `json:"token"`
 }
 
-func (s *Service) GenerateRefreshToken(GUID, ip string) (string, int, error) {
+func (s *Service) GenerateRefreshToken(GUID, ip string, ctx context.Context) (string, int, error) {
 	tokenBytes := make([]byte, 32)
 	_, _ = rand.Read(tokenBytes)
 
@@ -26,12 +27,12 @@ func (s *Service) GenerateRefreshToken(GUID, ip string) (string, int, error) {
 
 	encryptedToken, err := bcrypt.GenerateFromPassword(tokenBytes, bcrypt.DefaultCost)
 	if err != nil {
-		return "", 0, errors.New("internal error")
+		return "", 0, errHandler.New(errHandler.ErrInternal, err)
 	}
 
-	rTokenID, err := s.db.NewRefreshToken(encryptedToken)
+	rTokenID, err := s.db.NewRefreshToken(encryptedToken, ctx)
 	if err != nil {
-		return "", 0, errors.New("internal error")
+		return "", 0, errHandler.New(errHandler.ErrInternal, err)
 	}
 
 	payload := RefreshTokenPayload{
@@ -43,7 +44,7 @@ func (s *Service) GenerateRefreshToken(GUID, ip string) (string, int, error) {
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return "", 0, errors.New("internal error")
+		return "", 0, errHandler.New(errHandler.ErrInternal, err)
 	}
 
 	mac := hmac.New(sha256.New, []byte(s.refreshKey))
@@ -58,14 +59,14 @@ func (s *Service) GenerateRefreshToken(GUID, ip string) (string, int, error) {
 
 }
 
-func (s *Service) RenewTokens(rTokenBase64 string, ip string) (string, string, error) {
+func (s *Service) RenewTokens(rTokenBase64, ip string, ctx context.Context) (string, string, *errHandler.CustomError) {
 	data, err := base64.StdEncoding.DecodeString(rTokenBase64)
 	if err != nil {
-		return "", "", errors.New("токен должен быть в base64")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
 	if len(data) < 32 {
-		return "", "", errors.New("неверный формат токена")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
 	payloadBytes, signature := data[:len(data)-32], data[len(data)-32:]
@@ -74,47 +75,44 @@ func (s *Service) RenewTokens(rTokenBase64 string, ip string) (string, string, e
 	mac.Write(payloadBytes)
 	expectedSignature := mac.Sum(nil)
 	if !hmac.Equal(signature, expectedSignature) {
-		return "", "", errors.New("токен изменен")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
 	var payload RefreshTokenPayload
 	err = json.Unmarshal(payloadBytes, &payload)
 	if err != nil {
-		return "", "", errors.New("неверный формат токена")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
 	tokenBytes, err := base64.RawURLEncoding.DecodeString(payload.Token)
 	if err != nil {
-		return "", "", errors.New("неверный формат токена")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
-	bcryptHash, err := s.db.GetRefreshTokenID(payload.RefreshTokenID)
+	bcryptHash, err := s.db.GetRefreshTokenID(payload.RefreshTokenID, ctx)
 	if err != nil {
-		return "", "", errors.New("токен не найден")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(bcryptHash), tokenBytes)
 	if err != nil {
-		return "", "", errors.New("неверный refresh token")
+		return "", "", errHandler.New(errHandler.ErrInvalidToken, err)
 	}
 
 	if payload.Ip != ip {
-		err = service.SendEmail(payload.GUID, payload.Ip, ip)
-		if err != nil {
-			return "", "", err
-		}
+		// Ошибка залогирована через обработчик, а возвращать клиенту и прерывать исполнение функции нет смысла
+		_ = service.SendEmail(payload.GUID, payload.Ip, ip)
 	}
 
-	newToken, newRefreshToken, err := s.GenerateToken(payload.GUID, ip)
+	newToken, newRefreshToken, err := s.GenerateToken(payload.GUID, ip, ctx)
 	if err != nil {
-		return "", "", err
+		return "", "", errHandler.New(errHandler.ErrInternal, err)
 	}
 
-	err = s.db.DeleteRefreshToken(payload.RefreshTokenID)
+	err = s.db.DeleteRefreshToken(payload.RefreshTokenID, ctx)
 	if err != nil {
-		return "", "", err
+		return "", "", errHandler.New(errHandler.ErrInternal, err)
 	}
 
 	return newToken, newRefreshToken, nil
-
 }

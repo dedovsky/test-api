@@ -1,8 +1,8 @@
 services:
   test-api:
     build:
-      context: ../
-      dockerfile: ./docker/Dockerfile
+      context: ../src
+      dockerfile: ../docker/Dockerfile
     container_name: test-api
     ports:
       - "8080:8080"
