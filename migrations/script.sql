@@ -5,9 +5,6 @@ create table refresh_tokens
 );
 
 alter table refresh_tokens
-    owner to postgres;
-
-alter table refresh_tokens
     add constraint refresh_tokens_pk
         primary key (id);
 
