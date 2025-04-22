@@ -53,9 +53,9 @@ func (auth *AuthHandler) validateToken(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "токен не может быть пустым"})
 	}
 
-	_, err := auth.ValidateToken(token, c)
-	if err != nil {
-		c.JSON(401, gin.H{"error": err.Error()})
+	_, customErr := auth.ValidateToken(token, c)
+	if customErr != nil {
+		c.JSON(customErr.Code, gin.H{"error": customErr.Message})
 		return
 	}
 

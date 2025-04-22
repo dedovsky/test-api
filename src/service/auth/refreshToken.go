@@ -104,9 +104,9 @@ func (s *Service) RenewTokens(rTokenBase64, ip string, ctx context.Context) (str
 		_ = service.SendEmail(payload.GUID, payload.Ip, ip)
 	}
 
-	newToken, newRefreshToken, err := s.GenerateToken(payload.GUID, ip, ctx)
-	if err != nil {
-		return "", "", errHandler.New(errHandler.ErrInternal, err)
+	newToken, newRefreshToken, customErr := s.GenerateToken(payload.GUID, ip, ctx)
+	if customErr != nil {
+		return "", "", errHandler.New(errHandler.ErrInternal, customErr)
 	}
 
 	err = s.db.DeleteRefreshToken(payload.RefreshTokenID, ctx)
